@@ -114,13 +114,30 @@ async function initApp() {
 // --- Rendering ---
 function render() {
   const app = document.getElementById('app');
-  app.innerHTML = `
-    ${renderTopBar()}
-    <div class="main-layout">
-      ${renderViewport()}
-      ${renderSidebar()}
-    </div>
-  `;
+  if (!state.loaded) {
+    // Welcome state — centered URL input, no sidebar
+    app.innerHTML = `
+      ${renderTopBar()}
+      <div class="main-layout">
+        <div class="viewport">
+          <div class="welcome">
+            <div class="welcome-content">
+              <h2>Leave feedback on any prototype</h2>
+              <p>Paste a prototype URL above to load it. Then click anywhere on the screen to drop a pin and leave a comment.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    app.innerHTML = `
+      ${renderTopBar()}
+      <div class="main-layout">
+        ${renderViewport()}
+        ${renderSidebar()}
+      </div>
+    `;
+  }
   attachListeners();
 }
 
@@ -149,7 +166,7 @@ function renderTopBar() {
         <button class="btn btn-ghost" id="toggle-sidebar">
           ${state.sidebarOpen ? '◀' : '▶'} Notes
         </button>
-        ${state.comments.length > 0 ? `<button class="btn btn-ghost" id="export-btn">📄 Export</button>` : ''}
+        ${state.comments.length > 0 ? `<button class="btn btn-ghost" id="export-btn">📄 Export to PDF</button>` : ''}
         <button class="btn btn-ghost" id="start-over-btn" title="Start over">↺ Start over</button>
       </div>
     </div>
@@ -157,19 +174,6 @@ function renderTopBar() {
 }
 
 function renderViewport() {
-  if (!state.loaded) {
-    return `
-      <div class="viewport">
-        <div class="welcome">
-          <div class="welcome-content">
-            <h2>Leave feedback on any prototype</h2>
-            <p>Paste a prototype URL above to load it. Then click anywhere on the screen to drop a pin and leave a comment.</p>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
   const pins = currentComments().map((c, i) => `
     <div class="pin ${state.selectedCommentId === c.id ? 'selected' : ''}"
          style="left: ${c.x}%; top: ${c.y}%;"
@@ -453,18 +457,25 @@ function attachListeners() {
   }
 }
 
-function loadPrototype() {
+async function loadPrototype() {
   const urlInput = document.getElementById('url-input');
   if (!urlInput) return;
   let url = urlInput.value.trim();
   if (!url) return;
   if (!url.startsWith('http')) url = 'https://' + url;
+
+  // Auto start over — clear previous session
   if (window._iframePoller) clearInterval(window._iframePoller);
+  await clearAllScreenshots();
+  state.comments = [];
+  state.selectedCommentId = null;
+  state.newCommentPos = null;
+  state.commentMode = false;
+  localStorage.removeItem('our-notes-comments');
+
   state.prototypeUrl = url;
   state.currentScreen = url;
   state.loaded = true;
-  state.newCommentPos = null;
-  state.selectedCommentId = null;
   saveUrl();
   render();
 }
