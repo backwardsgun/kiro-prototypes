@@ -149,6 +149,7 @@ function renderTopBar() {
         <button class="btn btn-ghost" id="toggle-sidebar">
           ${state.sidebarOpen ? '◀' : '▶'} Notes
         </button>
+        ${state.comments.length > 0 ? `<button class="btn btn-ghost" id="export-btn">📄 Export</button>` : ''}
         <button class="btn btn-ghost" id="start-over-btn" title="Start over">↺ Start over</button>
       </div>
     </div>
@@ -314,6 +315,10 @@ function attachListeners() {
     });
   }
 
+  // Export
+  const exportBtn = document.getElementById('export-btn');
+  if (exportBtn) exportBtn.addEventListener('click', openExportModal);
+
   // Viewport overlay click — drop pin
   const overlay = document.getElementById('viewport-overlay');
   if (overlay) {
@@ -416,6 +421,22 @@ function attachListeners() {
   const iframe = document.getElementById('prototype-frame');
   if (iframe) {
     if (window._iframePoller) clearInterval(window._iframePoller);
+
+    // For cross-origin iframes, we can't read the URL but we can detect navigation via load event
+    iframe.addEventListener('load', () => {
+      let newUrl = '';
+      try { newUrl = iframe.contentWindow.location.href; } catch(e) { newUrl = 'screen_' + Date.now(); }
+      if (newUrl && newUrl !== 'about:blank' && newUrl !== state.currentScreen) {
+        state.currentScreen = newUrl;
+        state.selectedCommentId = null;
+        state.newCommentPos = null;
+        updateOverlay();
+        updateSidebar();
+        updateCommentCount();
+      }
+    });
+
+    // Also poll for same-origin SPA-style navigation
     window._iframePoller = setInterval(() => {
       try {
         const newUrl = iframe.contentWindow.location.href;
@@ -488,6 +509,7 @@ async function saveNewComment() {
   updateOverlay();
   updateSidebar();
   updateCommentCount();
+  showToast('Comment added');
 }
 
 // Persistent screen capture — prompt only once per session
@@ -724,6 +746,138 @@ function updateSidebar() {
   const countEl = document.querySelector('.comment-count');
   if (countEl) countEl.textContent = comments.length;
   attachThumbnailListeners(sidebarContent);
+}
+
+// --- Toast notification ---
+function showToast(message) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<span class="toast-icon">✓</span> ${message}`;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('visible'));
+  setTimeout(() => {
+    toast.classList.remove('visible');
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+}
+
+// --- Export ---
+function openExportModal() {
+  const existing = document.getElementById('export-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'export-modal';
+  modal.className = 'lightbox-overlay';
+  modal.innerHTML = `
+    <div class="export-modal-content">
+      <h3>Export Comments</h3>
+      <label class="export-label">Reviewer name</label>
+      <input type="text" id="export-reviewer" class="export-input" placeholder="Enter reviewer name..." value="${state.userName}">
+      <label class="export-label">Review date</label>
+      <input type="date" id="export-date" class="export-input" value="${new Date().toISOString().split('T')[0]}">
+      <div class="export-actions">
+        <button class="btn btn-ghost" id="export-cancel">Cancel</button>
+        <button class="btn btn-primary" id="export-pdf">Export PDF</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal || e.target.id === 'export-cancel') modal.remove();
+  });
+  document.getElementById('export-pdf').addEventListener('click', () => {
+    const reviewer = document.getElementById('export-reviewer').value.trim() || 'Reviewer';
+    const date = document.getElementById('export-date').value || new Date().toISOString().split('T')[0];
+    modal.remove();
+    generatePDF(reviewer, date);
+  });
+}
+
+async function generatePDF(reviewerName, reviewDate) {
+  // Group comments by screen
+  const grouped = {};
+  for (const c of state.comments) {
+    const key = c.screen || 'Unknown screen';
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(c);
+  }
+
+  // Build HTML for print
+  const screenSections = Object.entries(grouped).map(([screen, comments], si) => {
+    const commentRows = comments.map((c, i) => {
+      const time = new Date(c.timestamp).toLocaleString();
+      const screenshotHtml = c.screenshot
+        ? `<div class="pdf-screenshot"><img src="${c.screenshot}" alt="Screenshot"></div>`
+        : '';
+      return `
+        <div class="pdf-comment">
+          <div class="pdf-comment-header">
+            <span class="pdf-comment-number">${i + 1}</span>
+            <span class="pdf-comment-author">${c.author}</span>
+            <span class="pdf-comment-time">${time}</span>
+          </div>
+          <div class="pdf-comment-text">${c.text}</div>
+          ${screenshotHtml}
+        </div>
+      `;
+    }).join('');
+
+    // Shorten screen URL for display
+    let screenLabel = screen;
+    try { screenLabel = new URL(screen).pathname || screen; } catch(e) {}
+
+    return `
+      <div class="pdf-screen-section">
+        <h3>Screen ${si + 1}: ${screenLabel}</h3>
+        ${commentRows}
+      </div>
+    `;
+  }).join('');
+
+  const printHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Our Notes — Review Export</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a; padding: 40px; max-width: 900px; margin: 0 auto; }
+  .pdf-header { border-bottom: 2px solid #FF9900; padding-bottom: 16px; margin-bottom: 32px; }
+  .pdf-header h1 { font-size: 24px; margin-bottom: 4px; }
+  .pdf-header h2 { font-size: 16px; font-weight: 400; color: #555; }
+  .pdf-meta { display: flex; gap: 24px; margin-top: 8px; font-size: 13px; color: #666; }
+  .pdf-screen-section { margin-bottom: 32px; page-break-inside: avoid; }
+  .pdf-screen-section h3 { font-size: 15px; background: #f5f5f5; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; color: #333; word-break: break-all; }
+  .pdf-comment { border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px; margin-bottom: 10px; page-break-inside: avoid; }
+  .pdf-comment-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .pdf-comment-number { background: #FF9900; color: #000; font-weight: 700; font-size: 11px; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+  .pdf-comment-author { font-weight: 600; font-size: 13px; }
+  .pdf-comment-time { font-size: 11px; color: #888; margin-left: auto; }
+  .pdf-comment-text { font-size: 14px; line-height: 1.6; }
+  .pdf-screenshot { margin-top: 10px; }
+  .pdf-screenshot img { max-width: 100%; border-radius: 6px; border: 1px solid #e0e0e0; }
+  .pdf-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e0e0e0; font-size: 11px; color: #999; text-align: center; }
+  @media print { body { padding: 20px; } }
+</style></head><body>
+  <div class="pdf-header">
+    <h1>Prototype Review — Our Notes</h1>
+    <h2>${state.prototypeUrl}</h2>
+    <div class="pdf-meta">
+      <span>Reviewer: <strong>${reviewerName}</strong></span>
+      <span>Date: <strong>${reviewDate}</strong></span>
+      <span>Total comments: <strong>${state.comments.length}</strong></span>
+    </div>
+  </div>
+  ${screenSections}
+  <div class="pdf-footer">Generated by Our Notes — Prototype Feedback Tool</div>
+</body></html>`;
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(printHtml);
+  printWindow.document.close();
+  // Give images time to load then trigger print
+  setTimeout(() => printWindow.print(), 500);
 }
 
 function attachThumbnailListeners(container) {
