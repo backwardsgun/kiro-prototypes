@@ -663,6 +663,21 @@ function updateCommentCount() {
     if (count > 0) { countEl.textContent = count; countEl.style.display = ''; }
     else { countEl.style.display = 'none'; }
   }
+
+  // Show/hide export button based on total comments
+  const topBarRight = document.querySelector('.top-bar-right');
+  let exportBtn = document.getElementById('export-btn');
+  if (state.comments.length > 0 && !exportBtn && topBarRight) {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-ghost';
+    btn.id = 'export-btn';
+    btn.innerHTML = '📄 Export to PDF';
+    btn.addEventListener('click', openExportModal);
+    const startOver = document.getElementById('start-over-btn');
+    topBarRight.insertBefore(btn, startOver);
+  } else if (state.comments.length === 0 && exportBtn) {
+    exportBtn.remove();
+  }
 }
 
 function updateOverlay() {
