@@ -490,6 +490,24 @@ async function saveNewComment() {
   updateCommentCount();
 }
 
+// Persistent screen capture stream — prompt only once per session
+let _captureStream = null;
+
+async function getOrCreateCaptureStream() {
+  if (_captureStream) {
+    const track = _captureStream.getVideoTracks()[0];
+    if (track && track.readyState === 'live') return _captureStream;
+    _captureStream = null;
+  }
+  _captureStream = await navigator.mediaDevices.getDisplayMedia({
+    video: { displaySurface: 'browser' },
+    preferCurrentTab: true
+  });
+  // Clean up reference if user stops sharing
+  _captureStream.getVideoTracks()[0].addEventListener('ended', () => { _captureStream = null; });
+  return _captureStream;
+}
+
 async function captureScreenshot(pinXPercent, pinYPercent) {
   const wrapper = document.querySelector('.viewport-iframe-wrapper');
   if (!wrapper) return null;
@@ -502,15 +520,11 @@ async function captureScreenshot(pinXPercent, pinYPercent) {
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
   try {
-    const stream = await navigator.mediaDevices.getDisplayMedia({
-      video: { displaySurface: 'browser' },
-      preferCurrentTab: true
-    });
-
+    const stream = await getOrCreateCaptureStream();
     const track = stream.getVideoTracks()[0];
     const imageCapture = new ImageCapture(track);
     const bitmap = await imageCapture.grabFrame();
-    track.stop();
+    // Don't stop the track — keep it alive for future captures
 
     const rect = wrapper.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
