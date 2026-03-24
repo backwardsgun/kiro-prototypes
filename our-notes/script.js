@@ -124,6 +124,10 @@ function render() {
             <div class="welcome-content">
               <h2>Leave feedback on any prototype</h2>
               <p>Paste a prototype URL above to load it. Then click anywhere on the screen to drop a pin and leave a comment.</p>
+              <button class="btn btn-ghost" id="get-extension-btn" style="margin-top: 16px; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M6 8.5L7.5 10L10 6.5"/></svg>
+                Get Chrome Extension
+              </button>
             </div>
           </div>
         </div>
@@ -264,6 +268,10 @@ function formatTime(ts) {
 // --- Event listeners ---
 function attachListeners() {
   const urlInput = document.getElementById('url-input');
+
+  // Get Chrome Extension button
+  const extBtn = document.getElementById('get-extension-btn');
+  if (extBtn) extBtn.addEventListener('click', showExtensionModal);
   const loadBtn = document.getElementById('load-btn');
   if (urlInput) urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadPrototype(); });
   if (loadBtn) loadBtn.addEventListener('click', loadPrototype);
@@ -904,6 +912,37 @@ async function generatePDF(reviewerName, reviewDate) {
   printWindow.document.close();
   // Give images time to load then trigger print
   setTimeout(() => printWindow.print(), 500);
+}
+
+function showExtensionModal() {
+  const existing = document.getElementById('extension-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'extension-modal';
+  modal.className = 'lightbox-overlay';
+  modal.innerHTML = `
+    <div class="export-modal-content" style="width: 440px;">
+      <h3 style="margin-bottom: 8px;">Get Critiq for Chrome</h3>
+      <p style="font-size: 13px; color: #8892a4; line-height: 1.6; margin-bottom: 20px;">
+        Use Critiq directly on any page — no iframe needed. Drop pins and leave feedback right on the live site.
+      </p>
+      <div class="ext-steps">
+        <div class="ext-step"><span class="ext-step-num">1</span> Download and unzip the extension</div>
+        <div class="ext-step"><span class="ext-step-num">2</span> Open <code>chrome://extensions</code> in Chrome</div>
+        <div class="ext-step"><span class="ext-step-num">3</span> Enable <strong>Developer mode</strong> (top right)</div>
+        <div class="ext-step"><span class="ext-step-num">4</span> Click <strong>Load unpacked</strong> → select the folder</div>
+      </div>
+      <div class="export-actions" style="margin-top: 20px;">
+        <button class="btn btn-ghost" id="ext-modal-close">Close</button>
+        <a class="btn btn-primary" href="https://github.com/backwardsgun/kiro-prototypes/archive/refs/heads/main.zip" target="_blank" style="text-decoration: none;">Download Extension</a>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal || e.target.id === 'ext-modal-close') modal.remove();
+  });
 }
 
 function attachThumbnailListeners(container) {

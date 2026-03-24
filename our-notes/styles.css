@@ -604,3 +604,41 @@ body {
   gap: 8px;
   margin-top: 4px;
 }
+
+/* Extension install steps */
+.ext-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ext-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.ext-step code {
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.ext-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #000;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
