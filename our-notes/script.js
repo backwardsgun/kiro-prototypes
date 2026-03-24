@@ -7,12 +7,66 @@ let state = {
   sidebarOpen: true,
   comments: [],
   selectedCommentId: null,
-  newCommentPos: null, // { x%, y% }
+  newCommentPos: null,
   userName: 'Reviewer',
   currentScreen: ''
 };
 
-// Load from localStorage
+// --- IndexedDB for screenshots ---
+const DB_NAME = 'our-notes-db';
+const DB_STORE = 'screenshots';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveScreenshot(commentId, dataUrl) {
+  if (!dataUrl) return;
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).put(dataUrl, commentId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getScreenshot(commentId) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readonly');
+    const req = tx.objectStore(DB_STORE).get(commentId);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function deleteScreenshot(commentId) {
+  const db = await openDB();
+  return new Promise((resolve) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).delete(commentId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => resolve();
+  });
+}
+
+async function clearAllScreenshots() {
+  const db = await openDB();
+  return new Promise((resolve) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => resolve();
+  });
+}
+
+// --- State persistence (comments in localStorage, screenshots in IndexedDB) ---
 function loadState() {
   const saved = localStorage.getItem('our-notes-comments');
   if (saved) {
@@ -29,25 +83,35 @@ function loadState() {
 }
 
 function saveComments() {
-  localStorage.setItem('our-notes-comments', JSON.stringify(state.comments));
+  // Only save metadata — screenshots live in IndexedDB
+  const toSave = state.comments.map(c => {
+    const { screenshot, ...rest } = c;
+    return { ...rest, hasScreenshot: !!screenshot };
+  });
+  localStorage.setItem('our-notes-comments', JSON.stringify(toSave));
 }
 
 function saveUrl() {
   localStorage.setItem('our-notes-url', state.prototypeUrl);
 }
 
-// Get comments for current screen
 function currentComments() {
   return state.comments.filter(c => c.screen === state.currentScreen);
 }
 
-// Init
-function initApp() {
+// --- Init ---
+async function initApp() {
   loadState();
+  // Hydrate screenshots from IndexedDB
+  for (const c of state.comments) {
+    if (c.hasScreenshot) {
+      c.screenshot = await getScreenshot(c.id);
+    }
+  }
   render();
 }
 
-// Main render
+// --- Rendering ---
 function render() {
   const app = document.getElementById('app');
   app.innerHTML = `
@@ -138,7 +202,6 @@ function renderViewport() {
 
 function renderSidebar() {
   const comments = currentComments();
-
   return `
     <div class="sidebar ${state.sidebarOpen ? '' : 'collapsed'}">
       <div class="sidebar-header">
@@ -158,7 +221,6 @@ function renderSidebar() {
   `;
 }
 
-// Render a single comment card (shared by renderSidebar and updateSidebar)
 function renderCommentCard(c, i) {
   const thumbnail = c.screenshot
     ? `<div class="comment-thumbnail" data-screenshot="${c.id}"><img src="${c.screenshot}" alt="Screenshot"></div>`
@@ -184,7 +246,6 @@ function renderCommentCard(c, i) {
   `;
 }
 
-// Format timestamp
 function formatTime(ts) {
   const d = new Date(ts);
   const now = new Date();
@@ -195,28 +256,30 @@ function formatTime(ts) {
   return d.toLocaleDateString();
 }
 
-// Event listeners
+// --- Event listeners ---
 function attachListeners() {
-  // Load URL
   const urlInput = document.getElementById('url-input');
   const loadBtn = document.getElementById('load-btn');
+  if (urlInput) urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadPrototype(); });
+  if (loadBtn) loadBtn.addEventListener('click', loadPrototype);
 
-  if (urlInput) {
-    urlInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') loadPrototype();
-    });
-  }
-  if (loadBtn) {
-    loadBtn.addEventListener('click', loadPrototype);
-  }
-
-  // Toggle comment mode
+  // Toggle comment mode — PARTIAL update, no iframe rebuild
   const toggleMode = document.getElementById('toggle-comment-mode');
   if (toggleMode) {
     toggleMode.addEventListener('click', () => {
       state.commentMode = !state.commentMode;
       state.newCommentPos = null;
-      render();
+      // Update overlay class without rebuilding iframe
+      const overlay = document.getElementById('viewport-overlay');
+      if (overlay) {
+        overlay.classList.toggle('active', state.commentMode);
+        // Remove any new-comment form
+        const form = overlay.querySelector('.new-comment-form');
+        if (form) form.remove();
+      }
+      // Update button appearance
+      toggleMode.classList.toggle('active', state.commentMode);
+      toggleMode.innerHTML = `📌 ${state.commentMode ? 'Done commenting' : 'Add comment'}`;
     });
   }
 
@@ -225,16 +288,19 @@ function attachListeners() {
   if (toggleSidebar) {
     toggleSidebar.addEventListener('click', () => {
       state.sidebarOpen = !state.sidebarOpen;
-      render();
+      const sidebar = document.querySelector('.sidebar');
+      if (sidebar) sidebar.classList.toggle('collapsed', !state.sidebarOpen);
+      toggleSidebar.innerHTML = `${state.sidebarOpen ? '◀' : '▶'} Notes`;
     });
   }
 
   // Start over
   const startOverBtn = document.getElementById('start-over-btn');
   if (startOverBtn) {
-    startOverBtn.addEventListener('click', () => {
+    startOverBtn.addEventListener('click', async () => {
       if (!confirm('Start over? This will clear the loaded prototype and all comments.')) return;
       if (window._iframePoller) clearInterval(window._iframePoller);
+      await clearAllScreenshots();
       state.prototypeUrl = '';
       state.loaded = false;
       state.commentMode = false;
@@ -258,8 +324,9 @@ function attachListeners() {
       const y = ((e.clientY - rect.top) / rect.height) * 100;
       state.newCommentPos = { x, y };
       state.selectedCommentId = null;
-      render();
-      // Focus textarea
+      // Partial update — just update overlay and sidebar, don't rebuild iframe
+      updateOverlay();
+      updateSidebar();
       setTimeout(() => {
         const ta = document.getElementById('new-comment-text');
         if (ta) ta.focus();
@@ -273,7 +340,8 @@ function attachListeners() {
       e.stopPropagation();
       state.selectedCommentId = pin.dataset.commentId;
       state.newCommentPos = null;
-      render();
+      updateOverlay();
+      updateSidebar();
     });
   });
 
@@ -283,58 +351,60 @@ function attachListeners() {
       if (e.target.closest('.delete-comment-btn')) return;
       state.selectedCommentId = card.dataset.commentId;
       state.newCommentPos = null;
-      render();
+      updateOverlay();
+      updateSidebar();
     });
   });
 
   // Delete comment
   document.querySelectorAll('.delete-comment-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const id = btn.dataset.commentId;
+      await deleteScreenshot(id);
       state.comments = state.comments.filter(c => c.id !== id);
       if (state.selectedCommentId === id) state.selectedCommentId = null;
       saveComments();
-      render();
+      updateOverlay();
+      updateSidebar();
+      updateCommentCount();
     });
   });
 
   // Save new comment
   const saveBtn = document.getElementById('save-comment');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', saveNewComment);
-  }
+  if (saveBtn) saveBtn.addEventListener('click', saveNewComment);
 
   // Cancel new comment
   const cancelBtn = document.getElementById('cancel-comment');
   if (cancelBtn) {
     cancelBtn.addEventListener('click', () => {
       state.newCommentPos = null;
-      render();
+      updateOverlay();
     });
   }
 
-  // New comment textarea — Enter to submit
+  // Enter to submit
   const textarea = document.getElementById('new-comment-text');
   if (textarea) {
     textarea.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        saveNewComment();
-      }
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveNewComment(); }
     });
   }
 
   // Clear all
   const clearBtn = document.getElementById('clear-all-btn');
   if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
-      if (confirm('Clear all comments for this screen?')) {
-        state.comments = state.comments.filter(c => c.screen !== state.currentScreen);
-        state.selectedCommentId = null;
-        saveComments();
-        render();
-      }
+    clearBtn.addEventListener('click', async () => {
+      if (!confirm('Clear all comments for this screen?')) return;
+      const toDelete = state.comments.filter(c => c.screen === state.currentScreen);
+      for (const c of toDelete) await deleteScreenshot(c.id);
+      state.comments = state.comments.filter(c => c.screen !== state.currentScreen);
+      state.selectedCommentId = null;
+      saveComments();
+      updateOverlay();
+      updateSidebar();
+      updateCommentCount();
     });
   }
 
@@ -345,7 +415,6 @@ function attachListeners() {
   // Track iframe navigation
   const iframe = document.getElementById('prototype-frame');
   if (iframe) {
-    // Poll for URL changes since same-origin iframes don't always fire load
     if (window._iframePoller) clearInterval(window._iframePoller);
     window._iframePoller = setInterval(() => {
       try {
@@ -358,9 +427,7 @@ function attachListeners() {
           updateSidebar();
           updateCommentCount();
         }
-      } catch(e) {
-        // Cross-origin — can't read URL
-      }
+      } catch(e) { /* cross-origin */ }
     }, 500);
   }
 }
@@ -389,7 +456,7 @@ async function saveNewComment() {
   const pinX = state.newCommentPos.x;
   const pinY = state.newCommentPos.y;
 
-  // Capture screenshot BEFORE re-rendering (iframe must still be in DOM)
+  // Capture screenshot BEFORE any DOM changes — hide overlay + pins first
   let screenshot = null;
   try {
     screenshot = await captureScreenshot(pinX, pinY);
@@ -398,7 +465,7 @@ async function saveNewComment() {
   }
 
   const comment = {
-    id: 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+    id: 'c_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
     screen: state.currentScreen,
     x: pinX,
     y: pinY,
@@ -408,23 +475,33 @@ async function saveNewComment() {
     screenshot: screenshot
   };
 
+  // Save screenshot to IndexedDB
+  if (screenshot) {
+    await saveScreenshot(comment.id, screenshot);
+  }
+
   state.comments.push(comment);
   state.newCommentPos = null;
   state.selectedCommentId = comment.id;
   saveComments();
-  render();
+  // Partial update — don't rebuild iframe
+  updateOverlay();
+  updateSidebar();
+  updateCommentCount();
 }
 
 async function captureScreenshot(pinXPercent, pinYPercent) {
   const wrapper = document.querySelector('.viewport-iframe-wrapper');
   if (!wrapper) return null;
 
-  // Hide overlay and new-comment form during capture
+  // Hide overlay completely (pins + forms) so they don't appear in capture
   const overlay = document.getElementById('viewport-overlay');
-  if (overlay) overlay.style.visibility = 'hidden';
+  if (overlay) overlay.style.display = 'none';
+
+  // Wait for browser to repaint with overlay hidden
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
   try {
-    // Use Screen Capture API — preferCurrentTab avoids the picker in Chrome
     const stream = await navigator.mediaDevices.getDisplayMedia({
       video: { displaySurface: 'browser' },
       preferCurrentTab: true
@@ -433,19 +510,16 @@ async function captureScreenshot(pinXPercent, pinYPercent) {
     const track = stream.getVideoTracks()[0];
     const imageCapture = new ImageCapture(track);
     const bitmap = await imageCapture.grabFrame();
-    track.stop(); // Stop immediately — we only need one frame
+    track.stop();
 
-    // Get the iframe wrapper's position relative to the full page
     const rect = wrapper.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
 
-    // Create a canvas cropped to just the iframe area
     const canvas = document.createElement('canvas');
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
     const ctx = canvas.getContext('2d');
 
-    // Draw the cropped region from the full-page capture
     ctx.drawImage(
       bitmap,
       rect.left * dpr, rect.top * dpr,
@@ -455,16 +529,13 @@ async function captureScreenshot(pinXPercent, pinYPercent) {
     );
     bitmap.close();
 
-    // Draw highlight circle at pin position
     drawPinHighlight(ctx, pinXPercent, pinYPercent, canvas.width, canvas.height);
-
     return canvas.toDataURL('image/jpeg', 0.7);
   } catch(e) {
     console.warn('Screen capture failed, trying html2canvas fallback:', e);
-    // Fallback to html2canvas for same-origin iframes
     return captureScreenshotFallback(wrapper, pinXPercent, pinYPercent);
   } finally {
-    if (overlay) overlay.style.visibility = '';
+    if (overlay) overlay.style.display = '';
   }
 }
 
@@ -491,27 +562,24 @@ function drawPinHighlight(ctx, pinXPercent, pinYPercent, width, height) {
   const cy = (pinYPercent / 100) * height;
   const radius = 24;
 
-  // Outer glow
   ctx.beginPath();
   ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(255, 153, 0, 0.2)';
   ctx.fill();
 
-  // Ring
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.strokeStyle = '#FF9900';
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  // Inner dot
   ctx.beginPath();
   ctx.arc(cx, cy, 5, 0, Math.PI * 2);
   ctx.fillStyle = '#FF9900';
   ctx.fill();
 }
 
-// Lightbox
+// --- Lightbox ---
 function openLightbox(screenshotUrl) {
   const existing = document.getElementById('screenshot-lightbox');
   if (existing) existing.remove();
@@ -526,32 +594,26 @@ function openLightbox(screenshotUrl) {
     </div>
   `;
   document.body.appendChild(lightbox);
-
   lightbox.addEventListener('click', (e) => {
-    if (e.target === lightbox || e.target.id === 'lightbox-close') {
-      lightbox.remove();
-    }
+    if (e.target === lightbox || e.target.id === 'lightbox-close') lightbox.remove();
   });
 }
 
+// --- Partial re-renders (never rebuild iframe) ---
 function updateCommentCount() {
   const countEl = document.querySelector('.comment-count');
   const count = currentComments().length;
   if (countEl) {
-    if (count > 0) {
-      countEl.textContent = count;
-      countEl.style.display = '';
-    } else {
-      countEl.style.display = 'none';
-    }
+    if (count > 0) { countEl.textContent = count; countEl.style.display = ''; }
+    else { countEl.style.display = 'none'; }
   }
 }
 
-// Partial re-renders (avoid iframe rebuild)
 function updateOverlay() {
   const overlay = document.getElementById('viewport-overlay');
   if (!overlay) return;
   const comments = currentComments();
+
   const pins = comments.map((c, i) => `
     <div class="pin ${state.selectedCommentId === c.id ? 'selected' : ''}"
          style="left: ${c.x}%; top: ${c.y}%;"
@@ -559,7 +621,20 @@ function updateOverlay() {
       <span class="pin-number">${i + 1}</span>
     </div>
   `).join('');
-  overlay.innerHTML = pins;
+
+  const newCommentForm = state.newCommentPos ? `
+    <div class="new-comment-form" style="left: ${Math.min(state.newCommentPos.x, 70)}%; top: ${Math.min(state.newCommentPos.y + 2, 80)}%;">
+      <textarea id="new-comment-text" placeholder="Leave a comment..." autofocus></textarea>
+      <div class="new-comment-form-actions">
+        <button class="btn btn-ghost" id="cancel-comment">Cancel</button>
+        <button class="btn btn-primary" id="save-comment">Post</button>
+      </div>
+    </div>
+  ` : '';
+
+  overlay.innerHTML = pins + newCommentForm;
+  overlay.classList.toggle('active', state.commentMode);
+
   // Re-attach pin listeners
   overlay.querySelectorAll('.pin').forEach(pin => {
     pin.addEventListener('click', (e) => {
@@ -570,6 +645,18 @@ function updateOverlay() {
       updateSidebar();
     });
   });
+
+  // Re-attach form listeners
+  const saveBtn = document.getElementById('save-comment');
+  if (saveBtn) saveBtn.addEventListener('click', saveNewComment);
+  const cancelBtn = document.getElementById('cancel-comment');
+  if (cancelBtn) cancelBtn.addEventListener('click', () => { state.newCommentPos = null; updateOverlay(); });
+  const textarea = document.getElementById('new-comment-text');
+  if (textarea) {
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveNewComment(); }
+    });
+  }
 }
 
 function updateSidebar() {
@@ -587,7 +674,7 @@ function updateSidebar() {
     return;
   }
   sidebarContent.innerHTML = comments.map((c, i) => renderCommentCard(c, i)).join('');
-  // Re-attach sidebar listeners
+
   sidebarContent.querySelectorAll('.comment-card').forEach(card => {
     card.addEventListener('click', (e) => {
       if (e.target.closest('.delete-comment-btn')) return;
@@ -598,39 +685,36 @@ function updateSidebar() {
     });
   });
   sidebarContent.querySelectorAll('.delete-comment-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const id = btn.dataset.commentId;
+      await deleteScreenshot(id);
       state.comments = state.comments.filter(c => c.id !== id);
       if (state.selectedCommentId === id) state.selectedCommentId = null;
       saveComments();
       updateOverlay();
       updateSidebar();
+      updateCommentCount();
     });
   });
-  // Update count badge
+
   const countEl = document.querySelector('.comment-count');
   if (countEl) countEl.textContent = comments.length;
-
-  // Thumbnail click → lightbox
   attachThumbnailListeners(sidebarContent);
 }
 
-// Attach thumbnail click listeners within a container
 function attachThumbnailListeners(container) {
   container.querySelectorAll('.comment-thumbnail').forEach(thumb => {
     thumb.addEventListener('click', (e) => {
       e.stopPropagation();
       const commentId = thumb.dataset.screenshot;
       const comment = state.comments.find(c => c.id === commentId);
-      if (comment && comment.screenshot) {
-        openLightbox(comment.screenshot);
-      }
+      if (comment && comment.screenshot) openLightbox(comment.screenshot);
     });
   });
 }
 
-// Init
+// --- Boot ---
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {
