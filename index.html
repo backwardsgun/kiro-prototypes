@@ -5,28 +5,250 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kiro Prototypes</title>
     <style>
-        body { font-family: 'Amazon Ember', 'Helvetica Neue', Arial, sans-serif; background: #f2f3f3; margin: 0; padding: 40px; color: #000716; }
-        h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
-        p { color: #5f6b7a; margin-bottom: 32px; }
-        .cards { display: flex; gap: 20px; flex-wrap: wrap; }
-        .card { background: white; border: 1px solid #e9ebed; border-radius: 8px; padding: 24px; width: 300px; text-decoration: none; color: inherit; transition: box-shadow 0.15s; }
-        .card:hover { box-shadow: 0 4px 8px rgba(0,7,22,0.1); }
-        .card h2 { font-size: 18px; margin: 0 0 8px; }
-        .card span { font-size: 14px; color: #5f6b7a; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Amazon Ember', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0a0e17;
+            color: #e2e8f0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Subtle animated gradient background */
+        .bg-glow {
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(9, 114, 211, 0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(255, 153, 0, 0.06) 0%, transparent 50%);
+            animation: drift 20s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes drift {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-3%, 3%); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 80px 32px;
+        }
+
+        /* Header */
+        .header {
+            margin-bottom: 56px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #FF9900, #EC7211);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: #94a3b8;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            font-size: 44px;
+            font-weight: 700;
+            line-height: 1.15;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 17px;
+            color: #64748b;
+            line-height: 1.6;
+            max-width: 520px;
+        }
+
+        /* Cards */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 32px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .card:hover {
+            border-color: rgba(255,153,0,0.3);
+            background: linear-gradient(135deg, rgba(255,153,0,0.06) 0%, rgba(255,255,255,0.02) 100%);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 60px rgba(255,153,0,0.05);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .badge-blue {
+            background: rgba(9, 114, 211, 0.15);
+            color: #5ba3e6;
+        }
+
+        .badge-orange {
+            background: rgba(255, 153, 0, 0.15);
+            color: #ffb84d;
+        }
+
+        .card h2 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #f1f5f9;
+        }
+
+        .card p {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .card-arrow {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #FF9900;
+            transition: gap 0.2s;
+        }
+
+        .card:hover .card-arrow {
+            gap: 10px;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 80px;
+            padding-top: 32px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-text {
+            font-size: 13px;
+            color: #475569;
+        }
+
+        .footer-link {
+            font-size: 13px;
+            color: #64748b;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-link:hover {
+            color: #FF9900;
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 48px 20px; }
+            h1 { font-size: 32px; }
+            .cards { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
-    <h1>Kiro Prototypes</h1>
-    <p>Select a prototype to view.</p>
-    <div class="cards">
-        <a class="card" href="transition/index.html">
-            <h2>Enterprise Transition</h2>
-            <span>Starter Home to Classic AWS account transition flow</span>
-        </a>
-        <a class="card" href="figjam-insights/index.html">
-            <h2>FigJam Insights</h2>
-            <span>FigJam board analyzer with AI-powered UX research insights</span>
-        </a>
+    <div class="bg-glow"></div>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="white">
+                        <path d="M10 2L3 7v6c0 4 3 7 7 7s7-3 7-7V7l-7-5z" opacity="0.9"/>
+                    </svg>
+                </div>
+                <span class="logo-text">Kiro Prototypes</span>
+            </div>
+            <h1>Interactive prototypes,<br>built with code.</h1>
+            <p class="subtitle">A collection of functional UX prototypes for AWS service experiences. Click to explore.</p>
+        </div>
+
+        <div class="cards">
+            <a class="card" href="transition/index.html">
+                <span class="card-badge badge-blue">Cloudscape</span>
+                <h2>Enterprise Transition</h2>
+                <p>Guided flow for transitioning from a Starter Home account to a Classic enterprise AWS environment.</p>
+                <span class="card-arrow">Open prototype →</span>
+            </a>
+            <a class="card" href="figjam-insights/index.html">
+                <span class="card-badge badge-orange">Research Tool</span>
+                <h2>FigJam Insights</h2>
+                <p>AI-powered analyzer that extracts and synthesizes UX research findings from FigJam boards.</p>
+                <span class="card-arrow">Open prototype →</span>
+            </a>
+        </div>
+
+        <div class="footer">
+            <span class="footer-text">Built with Kiro</span>
+            <a class="footer-link" href="https://github.com/backwardsgun/kiro-prototypes" target="_blank">GitHub ↗</a>
+        </div>
     </div>
 </body>
 </html>
