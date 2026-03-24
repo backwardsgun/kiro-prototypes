@@ -404,6 +404,56 @@ async function captureScreenshot(pinXPercent, pinYPercent) {
   const wrapper = document.querySelector('.viewport-iframe-wrapper');
   if (!wrapper) return null;
 
+  // Hide overlay and new-comment form during capture
+  const overlay = document.getElementById('viewport-overlay');
+  if (overlay) overlay.style.visibility = 'hidden';
+
+  try {
+    // Use Screen Capture API — preferCurrentTab avoids the picker in Chrome
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { displaySurface: 'browser' },
+      preferCurrentTab: true
+    });
+
+    const track = stream.getVideoTracks()[0];
+    const imageCapture = new ImageCapture(track);
+    const bitmap = await imageCapture.grabFrame();
+    track.stop(); // Stop immediately — we only need one frame
+
+    // Get the iframe wrapper's position relative to the full page
+    const rect = wrapper.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+
+    // Create a canvas cropped to just the iframe area
+    const canvas = document.createElement('canvas');
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+
+    // Draw the cropped region from the full-page capture
+    ctx.drawImage(
+      bitmap,
+      rect.left * dpr, rect.top * dpr,
+      rect.width * dpr, rect.height * dpr,
+      0, 0,
+      canvas.width, canvas.height
+    );
+    bitmap.close();
+
+    // Draw highlight circle at pin position
+    drawPinHighlight(ctx, pinXPercent, pinYPercent, canvas.width, canvas.height);
+
+    return canvas.toDataURL('image/jpeg', 0.7);
+  } catch(e) {
+    console.warn('Screen capture failed, trying html2canvas fallback:', e);
+    // Fallback to html2canvas for same-origin iframes
+    return captureScreenshotFallback(wrapper, pinXPercent, pinYPercent);
+  } finally {
+    if (overlay) overlay.style.visibility = '';
+  }
+}
+
+async function captureScreenshotFallback(wrapper, pinXPercent, pinYPercent) {
   try {
     const canvas = await html2canvas(wrapper, {
       useCORS: true,
@@ -412,37 +462,38 @@ async function captureScreenshot(pinXPercent, pinYPercent) {
       scale: 1,
       ignoreElements: (el) => el.classList.contains('viewport-overlay')
     });
-
-    // Draw highlight circle at pin position
     const ctx = canvas.getContext('2d');
-    const cx = (pinXPercent / 100) * canvas.width;
-    const cy = (pinYPercent / 100) * canvas.height;
-    const radius = 24;
-
-    // Outer glow
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 153, 0, 0.2)';
-    ctx.fill();
-
-    // Ring
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = '#FF9900';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Inner dot
-    ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#FF9900';
-    ctx.fill();
-
-    return canvas.toDataURL('image/jpeg', 0.6);
+    drawPinHighlight(ctx, pinXPercent, pinYPercent, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.7);
   } catch(e) {
-    console.warn('Screenshot capture failed:', e);
+    console.warn('html2canvas fallback also failed:', e);
     return null;
   }
+}
+
+function drawPinHighlight(ctx, pinXPercent, pinYPercent, width, height) {
+  const cx = (pinXPercent / 100) * width;
+  const cy = (pinYPercent / 100) * height;
+  const radius = 24;
+
+  // Outer glow
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255, 153, 0, 0.2)';
+  ctx.fill();
+
+  // Ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = '#FF9900';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Inner dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#FF9900';
+  ctx.fill();
 }
 
 // Lightbox
