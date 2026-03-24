@@ -3,7 +3,7 @@
 let state = {
   prototypeUrl: '',
   loaded: false,
-  commentMode: true,
+  commentMode: false,
   sidebarOpen: true,
   comments: [],
   selectedCommentId: null,
@@ -78,9 +78,9 @@ function renderTopBar() {
       <div class="top-bar-right">
         ${state.loaded ? `
           <button class="btn btn-ghost ${state.commentMode ? 'active' : ''}" id="toggle-comment-mode">
-            📌 ${state.commentMode ? 'Comment mode' : 'Browse mode'}
+            📌 ${state.commentMode ? 'Done commenting' : 'Add comment'}
           </button>
-          ${count > 0 ? `<span class="comment-count">${count}</span>` : ''}
+          ${count > 0 ? `<span class="comment-count">${count}</span>` : '<span class="comment-count" style="display:none">0</span>'}
         ` : ''}
         <button class="btn btn-ghost" id="toggle-sidebar">
           ${state.sidebarOpen ? '◀' : '▶'} Notes
@@ -151,24 +151,33 @@ function renderSidebar() {
             <h3>No comments yet</h3>
             <p>Click anywhere on the prototype to drop a pin and leave feedback.</p>
           </div>
-        ` : comments.map((c, i) => `
-          <div class="comment-card ${state.selectedCommentId === c.id ? 'selected' : ''}" data-comment-id="${c.id}">
-            <div class="comment-card-header">
-              <div class="comment-author">
-                <div class="comment-avatar">${c.author.charAt(0).toUpperCase()}</div>
-                <span class="comment-name">${c.author}</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span class="comment-pin-number">${i + 1}</span>
-                <button class="btn btn-danger delete-comment-btn" data-comment-id="${c.id}" title="Delete">✕</button>
-              </div>
-            </div>
-            <div class="comment-text">${c.text}</div>
-            <div class="comment-meta">
-              <span class="comment-time">${formatTime(c.timestamp)}</span>
-            </div>
-          </div>
-        `).join('')}
+        ` : comments.map((c, i) => renderCommentCard(c, i)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// Render a single comment card (shared by renderSidebar and updateSidebar)
+function renderCommentCard(c, i) {
+  const thumbnail = c.screenshot
+    ? `<div class="comment-thumbnail" data-screenshot="${c.id}"><img src="${c.screenshot}" alt="Screenshot"></div>`
+    : '';
+  return `
+    <div class="comment-card ${state.selectedCommentId === c.id ? 'selected' : ''}" data-comment-id="${c.id}">
+      <div class="comment-card-header">
+        <div class="comment-author">
+          <div class="comment-avatar">${c.author.charAt(0).toUpperCase()}</div>
+          <span class="comment-name">${c.author}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="comment-pin-number">${i + 1}</span>
+          <button class="btn btn-danger delete-comment-btn" data-comment-id="${c.id}" title="Delete">✕</button>
+        </div>
+      </div>
+      <div class="comment-text">${c.text}</div>
+      ${thumbnail}
+      <div class="comment-meta">
+        <span class="comment-time">${formatTime(c.timestamp)}</span>
       </div>
     </div>
   `;
@@ -309,20 +318,30 @@ function attachListeners() {
     });
   }
 
+  // Thumbnail click → lightbox
+  const sidebarContent = document.querySelector('.sidebar-content');
+  if (sidebarContent) attachThumbnailListeners(sidebarContent);
+
   // Track iframe navigation
   const iframe = document.getElementById('prototype-frame');
   if (iframe) {
-    iframe.addEventListener('load', () => {
+    // Poll for URL changes since same-origin iframes don't always fire load
+    if (window._iframePoller) clearInterval(window._iframePoller);
+    window._iframePoller = setInterval(() => {
       try {
         const newUrl = iframe.contentWindow.location.href;
-        if (newUrl && newUrl !== 'about:blank') {
+        if (newUrl && newUrl !== 'about:blank' && newUrl !== state.currentScreen) {
           state.currentScreen = newUrl;
+          state.selectedCommentId = null;
+          state.newCommentPos = null;
+          updateOverlay();
+          updateSidebar();
+          updateCommentCount();
         }
       } catch(e) {
-        // Cross-origin, keep current screen
+        // Cross-origin — can't read URL
       }
-      render();
-    });
+    }, 500);
   }
 }
 
@@ -332,6 +351,7 @@ function loadPrototype() {
   let url = urlInput.value.trim();
   if (!url) return;
   if (!url.startsWith('http')) url = 'https://' + url;
+  if (window._iframePoller) clearInterval(window._iframePoller);
   state.prototypeUrl = url;
   state.currentScreen = url;
   state.loaded = true;
@@ -345,21 +365,203 @@ function saveNewComment() {
   const textarea = document.getElementById('new-comment-text');
   if (!textarea || !textarea.value.trim()) return;
 
+  const commentText = textarea.value.trim();
+  const pinX = state.newCommentPos.x;
+  const pinY = state.newCommentPos.y;
+
   const comment = {
     id: 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
     screen: state.currentScreen,
-    x: state.newCommentPos.x,
-    y: state.newCommentPos.y,
-    text: textarea.value.trim(),
+    x: pinX,
+    y: pinY,
+    text: commentText,
     author: state.userName,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    screenshot: null
   };
+
+  // Capture screenshot of the iframe wrapper area
+  captureScreenshot(pinX, pinY).then(dataUrl => {
+    comment.screenshot = dataUrl;
+    saveComments();
+    updateOverlay();
+    updateSidebar();
+  }).catch(() => {
+    // Screenshot failed (likely cross-origin) — save without it
+    saveComments();
+    updateOverlay();
+    updateSidebar();
+  });
 
   state.comments.push(comment);
   state.newCommentPos = null;
   state.selectedCommentId = comment.id;
   saveComments();
   render();
+}
+
+async function captureScreenshot(pinXPercent, pinYPercent) {
+  const wrapper = document.querySelector('.viewport-iframe-wrapper');
+  if (!wrapper) return null;
+
+  try {
+    const canvas = await html2canvas(wrapper, {
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#1e1e1e',
+      scale: 1,
+      ignoreElements: (el) => el.classList.contains('viewport-overlay')
+    });
+
+    // Draw highlight circle at pin position
+    const ctx = canvas.getContext('2d');
+    const cx = (pinXPercent / 100) * canvas.width;
+    const cy = (pinYPercent / 100) * canvas.height;
+    const radius = 24;
+
+    // Outer glow
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 153, 0, 0.2)';
+    ctx.fill();
+
+    // Ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = '#FF9900';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Inner dot
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#FF9900';
+    ctx.fill();
+
+    return canvas.toDataURL('image/jpeg', 0.6);
+  } catch(e) {
+    console.warn('Screenshot capture failed:', e);
+    return null;
+  }
+}
+
+// Lightbox
+function openLightbox(screenshotUrl) {
+  const existing = document.getElementById('screenshot-lightbox');
+  if (existing) existing.remove();
+
+  const lightbox = document.createElement('div');
+  lightbox.id = 'screenshot-lightbox';
+  lightbox.className = 'lightbox-overlay';
+  lightbox.innerHTML = `
+    <div class="lightbox-content">
+      <img src="${screenshotUrl}" class="lightbox-image" alt="Screenshot">
+      <button class="lightbox-close" id="lightbox-close">✕</button>
+    </div>
+  `;
+  document.body.appendChild(lightbox);
+
+  lightbox.addEventListener('click', (e) => {
+    if (e.target === lightbox || e.target.id === 'lightbox-close') {
+      lightbox.remove();
+    }
+  });
+}
+
+function updateCommentCount() {
+  const countEl = document.querySelector('.comment-count');
+  const count = currentComments().length;
+  if (countEl) {
+    if (count > 0) {
+      countEl.textContent = count;
+      countEl.style.display = '';
+    } else {
+      countEl.style.display = 'none';
+    }
+  }
+}
+
+// Partial re-renders (avoid iframe rebuild)
+function updateOverlay() {
+  const overlay = document.getElementById('viewport-overlay');
+  if (!overlay) return;
+  const comments = currentComments();
+  const pins = comments.map((c, i) => `
+    <div class="pin ${state.selectedCommentId === c.id ? 'selected' : ''}"
+         style="left: ${c.x}%; top: ${c.y}%;"
+         data-comment-id="${c.id}">
+      <span class="pin-number">${i + 1}</span>
+    </div>
+  `).join('');
+  overlay.innerHTML = pins;
+  // Re-attach pin listeners
+  overlay.querySelectorAll('.pin').forEach(pin => {
+    pin.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.selectedCommentId = pin.dataset.commentId;
+      state.newCommentPos = null;
+      updateOverlay();
+      updateSidebar();
+    });
+  });
+}
+
+function updateSidebar() {
+  const sidebarContent = document.querySelector('.sidebar-content');
+  if (!sidebarContent) return;
+  const comments = currentComments();
+  if (comments.length === 0) {
+    sidebarContent.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">💬</div>
+        <h3>No comments yet</h3>
+        <p>Click anywhere on the prototype to drop a pin and leave feedback.</p>
+      </div>
+    `;
+    return;
+  }
+  sidebarContent.innerHTML = comments.map((c, i) => renderCommentCard(c, i)).join('');
+  // Re-attach sidebar listeners
+  sidebarContent.querySelectorAll('.comment-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.delete-comment-btn')) return;
+      state.selectedCommentId = card.dataset.commentId;
+      state.newCommentPos = null;
+      updateOverlay();
+      updateSidebar();
+    });
+  });
+  sidebarContent.querySelectorAll('.delete-comment-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.commentId;
+      state.comments = state.comments.filter(c => c.id !== id);
+      if (state.selectedCommentId === id) state.selectedCommentId = null;
+      saveComments();
+      updateOverlay();
+      updateSidebar();
+    });
+  });
+  // Update count badge
+  const countEl = document.querySelector('.comment-count');
+  if (countEl) countEl.textContent = comments.length;
+
+  // Thumbnail click → lightbox
+  attachThumbnailListeners(sidebarContent);
+}
+
+// Attach thumbnail click listeners within a container
+function attachThumbnailListeners(container) {
+  container.querySelectorAll('.comment-thumbnail').forEach(thumb => {
+    thumb.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const commentId = thumb.dataset.screenshot;
+      const comment = state.comments.find(c => c.id === commentId);
+      if (comment && comment.screenshot) {
+        openLightbox(comment.screenshot);
+      }
+    });
+  });
 }
 
 // Init

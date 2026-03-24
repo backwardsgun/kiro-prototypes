@@ -177,12 +177,18 @@ body {
 .viewport-overlay {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  cursor: crosshair;
   z-index: 10;
-  display: none;
+  pointer-events: none;
 }
 
-.viewport-overlay.active { display: block; }
+.viewport-overlay.active {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.viewport-overlay .pin {
+  pointer-events: auto;
+}
 
 /* Pins */
 .pin {
@@ -352,6 +358,7 @@ body {
   padding: 16px;
   width: 300px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  pointer-events: auto;
 }
 
 .new-comment-form textarea {
@@ -441,3 +448,77 @@ body {
 .sidebar-content::-webkit-scrollbar-track { background: transparent; }
 .sidebar-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 .sidebar-content::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+/* Screenshot Thumbnails */
+.comment-thumbnail {
+  margin: 8px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: border-color 0.15s, opacity 0.15s;
+  max-height: 120px;
+}
+
+.comment-thumbnail:hover {
+  border-color: var(--accent);
+  opacity: 0.85;
+}
+
+.comment-thumbnail img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+  max-height: 120px;
+}
+
+/* Lightbox */
+.lightbox-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.lightbox-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.lightbox-image {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 12px;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.6);
+  object-fit: contain;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.lightbox-close:hover {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+}
