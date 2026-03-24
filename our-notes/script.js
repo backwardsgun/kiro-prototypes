@@ -490,58 +490,67 @@ async function saveNewComment() {
   updateCommentCount();
 }
 
-// Persistent screen capture stream — prompt only once per session
+// Persistent screen capture — prompt only once per session
 let _captureStream = null;
+let _captureVideo = null;
 
-async function getOrCreateCaptureStream() {
+async function initCaptureStream() {
   if (_captureStream) {
     const track = _captureStream.getVideoTracks()[0];
-    if (track && track.readyState === 'live') return _captureStream;
+    if (track && track.readyState === 'live') return;
     _captureStream = null;
   }
   _captureStream = await navigator.mediaDevices.getDisplayMedia({
     video: { displaySurface: 'browser' },
     preferCurrentTab: true
   });
-  // Clean up reference if user stops sharing
-  _captureStream.getVideoTracks()[0].addEventListener('ended', () => { _captureStream = null; });
-  return _captureStream;
+  _captureStream.getVideoTracks()[0].addEventListener('ended', () => {
+    _captureStream = null;
+    _captureVideo = null;
+  });
+  // Create a hidden video element to read frames from
+  if (_captureVideo) _captureVideo.remove();
+  _captureVideo = document.createElement('video');
+  _captureVideo.srcObject = _captureStream;
+  _captureVideo.style.position = 'fixed';
+  _captureVideo.style.top = '-9999px';
+  _captureVideo.muted = true;
+  document.body.appendChild(_captureVideo);
+  await _captureVideo.play();
 }
 
 async function captureScreenshot(pinXPercent, pinYPercent) {
   const wrapper = document.querySelector('.viewport-iframe-wrapper');
   if (!wrapper) return null;
 
-  // Hide overlay completely (pins + forms) so they don't appear in capture
   const overlay = document.getElementById('viewport-overlay');
   if (overlay) overlay.style.display = 'none';
-
-  // Wait for browser to repaint with overlay hidden
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
   try {
-    const stream = await getOrCreateCaptureStream();
-    const track = stream.getVideoTracks()[0];
-    const imageCapture = new ImageCapture(track);
-    const bitmap = await imageCapture.grabFrame();
-    // Don't stop the track — keep it alive for future captures
+    await initCaptureStream();
 
     const rect = wrapper.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
+    const vw = _captureVideo.videoWidth;
+    const vh = _captureVideo.videoHeight;
+
+    // Scale factor between video resolution and CSS viewport
+    const scaleX = vw / window.innerWidth;
+    const scaleY = vh / window.innerHeight;
 
     const canvas = document.createElement('canvas');
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    canvas.width = rect.width * scaleX;
+    canvas.height = rect.height * scaleY;
     const ctx = canvas.getContext('2d');
 
     ctx.drawImage(
-      bitmap,
-      rect.left * dpr, rect.top * dpr,
-      rect.width * dpr, rect.height * dpr,
+      _captureVideo,
+      rect.left * scaleX, rect.top * scaleY,
+      rect.width * scaleX, rect.height * scaleY,
       0, 0,
       canvas.width, canvas.height
     );
-    bitmap.close();
 
     drawPinHighlight(ctx, pinXPercent, pinYPercent, canvas.width, canvas.height);
     return canvas.toDataURL('image/jpeg', 0.7);
