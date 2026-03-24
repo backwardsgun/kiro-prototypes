@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Figjam Insights</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amazon+Ember:wght@300;400;500;700&family=Amazon+Ember+Display:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- AWS-style Top Navigation -->
+        <nav class="aws-nav">
+            <div class="nav-container">
+                <div class="nav-brand">
+                    <div class="aws-logo">
+                        <svg width="40" height="24" viewBox="0 0 40 24" fill="currentColor">
+                            <path d="M13.5 11.5c0 .6-.1 1.1-.2 1.6-.1.5-.3.9-.5 1.3-.2.4-.5.7-.8.9-.3.2-.7.3-1.1.3-.8 0-1.4-.3-1.8-.8-.4-.5-.6-1.2-.6-2.1V9.2c0-.9.2-1.6.6-2.1.4-.5 1-.8 1.8-.8.4 0 .8.1 1.1.3.3.2.6.5.8.9.2.4.4.8.5 1.3.1.5.2 1 .2 1.6v.1zm2.3-2.8c0-.7-.1-1.4-.3-2-.2-.6-.5-1.1-.9-1.5-.4-.4-.9-.7-1.5-.9-.6-.2-1.3-.3-2-.3-.7 0-1.4.1-2 .3-.6.2-1.1.5-1.5.9-.4.4-.7.9-.9 1.5-.2.6-.3 1.3-.3 2v5.6c0 .7.1 1.4.3 2 .2.6.5 1.1.9 1.5.4.4.9.7 1.5.9.6.2 1.3.3 2 .3.7 0 1.4-.1 2-.3.6-.2 1.1-.5 1.5-.9.4-.4.7-.9.9-1.5.2-.6.3-1.3.3-2V8.7z"/>
+                            <path d="M25.2 16.8h-2.2V5.4h2.2v11.4zm-1.1-12.8c-.4 0-.7-.1-.9-.4-.2-.3-.3-.6-.3-.9 0-.3.1-.6.3-.9.2-.3.5-.4.9-.4.4 0 .7.1.9.4.2.3.3.6.3.9 0 .3-.1.6-.3.9-.2.3-.5.4-.9.4z"/>
+                            <path d="M35.8 16.8h-2.1l-.2-1.2h-.1c-.3.5-.7.9-1.2 1.1-.5.2-1 .3-1.6.3-.8 0-1.4-.2-1.9-.7-.5-.5-.7-1.2-.7-2.1 0-1 .4-1.7 1.1-2.2.7-.5 1.8-.7 3.2-.8v-.3c0-.5-.1-.9-.4-1.1-.3-.2-.7-.3-1.2-.3-.4 0-.8.1-1.2.2-.4.1-.8.3-1.1.5l-.8-1.6c.4-.3.9-.5 1.5-.7.6-.2 1.2-.3 1.8-.3 1.1 0 1.9.3 2.4.8.5.5.8 1.3.8 2.3v5.1zm-2.3-3.1c-.8 0-1.3.1-1.6.4-.3.3-.5.7-.5 1.1 0 .3.1.6.3.7.2.2.5.3.8.3.4 0 .7-.1 1-.4.3-.3.4-.6.4-1v-.1h-.4z"/>
+                        </svg>
+                    </div>
+                    <div class="service-info">
+                        <h1 class="service-title">FigJam Insights</h1>
+                        <p class="service-subtitle">Analyze collaborative boards with AI-powered insights</p>
+                    </div>
+                </div>
+
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <h1 class="hero-title">Transform FigJam boards into actionable insights</h1>
+                    <p class="hero-description">
+                        Automatically extract, categorize, and analyze sticky note content from your collaborative design sessions. 
+                        Get comprehensive summaries and strategic recommendations powered by intelligent content analysis.
+                    </p>
+                    <div class="hero-features">
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <span>Real-time analysis</span>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                </svg>
+                            </div>
+                            <span>Smart categorization</span>
+                        </div>
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M12 2l3.09 6.26L22 9l-5 4.87L18.18 20 12 16.77 5.82 20 7 13.87 2 9l6.91-.74L12 2z"/>
+                                </svg>
+                            </div>
+                            <span>Export & share</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-container">
+                <!-- Input Section -->
+                <section class="input-section">
+                    <div class="section-header">
+                        <h2>Connect your FigJam board</h2>
+                        <p>Enter your credentials to start analyzing your collaborative design sessions</p>
+                    </div>
+                    
+                    <div class="input-container">
+                        <div class="input-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="figma-token" class="form-label">
+                                        Figma Personal Access Token
+                                        <span class="required">*</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <input 
+                                            type="password" 
+                                            id="figma-token" 
+                                            placeholder="figd_U4iAx7s-nzY5T3BlbkFJ8xQpL2mN9vK6wE1rC0dH" 
+                                            class="aws-input token-input"
+                                        >
+                                        <div class="input-icon">
+                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                                <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zM3 7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="form-help">
+                                        <a href="https://www.figma.com/developers/api#access-tokens" target="_blank" class="help-link">
+                                            Get your token from Figma Developer Settings
+                                            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                                                <path d="M3.5 3a.5.5 0 0 0 0 1h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 1 0v-4A1.5 1.5 0 0 0 7.5 3h-4z"/>
+                                            </svg>
+                                        </a>
+                                        <br><small>Token must have file read permissions • <span id="token-status" style="color: #10b981; display: none;">✓ Token saved</span></small>
+                                        <br><button type="button" id="clear-token-btn" style="display: none; margin-top: 4px; padding: 2px 8px; font-size: 11px; background: transparent; border: 1px solid #d1d5db; border-radius: 3px; color: #6b7280; cursor: pointer;" onclick="document.querySelector('.app').figJamAnalyzer.clearTokenAndRefresh()">Clear saved token</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="aws-service" class="form-label">
+                                        AWS Service Name
+                                        <span style="color: #64748b; font-weight: 400;">(Optional)</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <input 
+                                            type="text" 
+                                            id="aws-service" 
+                                            placeholder="e.g., EC2, S3, Lambda, Control Tower, CloudFormation" 
+                                            class="aws-input"
+                                        >
+                                        <div class="input-icon">
+                                            <svg width="16" height="16" viewBox="0 0 20 20" fill="#FF9900">
+                                                <path d="M10 2L3 7v6c0 4.42 3.58 8 7 8s7-3.58 7-8V7l-7-5z"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="form-help">
+                                        Enter the AWS service this research relates to for context-aware analysis
+                                        <br><small>The analysis will be tailored to the service's features, use cases, and common user workflows</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="figjam-url" class="form-label">
+                                        FigJam Board URL
+                                        <span class="required">*</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <input 
+                                            type="url" 
+                                            id="figjam-url" 
+                                            placeholder="https://www.figma.com/board/..." 
+                                            class="aws-input url-input"
+                                        >
+                                        <div class="input-icon">
+                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="form-help">
+                                        Ensure the board is accessible with your Figma account
+                                        <br><small>Must be a FigJam board (not regular Figma file) with sticky notes</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button id="analyze-btn" class="aws-button primary" disabled>
+                                    <span class="btn-content">
+                                        <span class="btn-text">Analyze board</span>
+                                        <div class="btn-spinner" style="display: none;">
+                                            <div class="spinner"></div>
+                                        </div>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Results Section -->
+                <section class="results-section" id="results-section" style="display: none;">
+                    <div class="results-header">
+                        <h2>Analysis Results</h2>
+                        <div class="board-info" id="board-info">
+                            <!-- Board metadata will be inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="summary-grid">
+                        <div class="summary-card">
+                            <h3>Board Overview</h3>
+                            <div id="board-overview" class="summary-content">
+                                <!-- Overview content -->
+                            </div>
+                        </div>
+
+                        <div class="summary-card">
+                            <h3>Key Findings</h3>
+                            <div id="key-findings" class="summary-content">
+                                <!-- Key findings content -->
+                            </div>
+                        </div>
+
+                        <div class="summary-card">
+                            <h3>Themes & Categories</h3>
+                            <div id="themes-categories" class="summary-content">
+                                <!-- Themes content -->
+                            </div>
+                        </div>
+
+                        <div class="summary-card">
+                            <h3>Sticky Notes Analysis</h3>
+                            <div id="sticky-analysis" class="summary-content">
+                                <!-- Sticky notes analysis -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Summary -->
+                    <div class="detailed-summary">
+                        <h3>Detailed Summary</h3>
+                        <div id="detailed-summary-content" class="detailed-content">
+                            <!-- Detailed summary will be inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Export Options -->
+                    <div class="export-section">
+                        <h3>Export Results</h3>
+                        <div class="export-buttons">
+                            <button class="export-btn" id="export-markdown">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M14.85 3H1.15C.52 3 0 3.52 0 4.15v7.69C0 12.48.52 13 1.15 13h13.69c.64 0 1.15-.52 1.15-1.15V4.15C16 3.52 15.48 3 14.85 3z"/>
+                                </svg>
+                                Export as Markdown
+                            </button>
+                            <button class="export-btn" id="copy-summary">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                </svg>
+                                Copy to Clipboard
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Error Section -->
+                <section class="error-section" id="error-section" style="display: none;">
+                    <div class="error-card">
+                        <div class="error-icon">⚠️</div>
+                        <h3>Analysis Failed</h3>
+                        <p id="error-message">Unable to analyze the FigJam board. Please check the URL and try again.</p>
+                        <button class="retry-btn" id="retry-btn">Try Again</button>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="aws-footer">
+            <div class="footer-container">
+                <div class="footer-content">
+                    <div class="footer-section">
+                        <h4>Resources</h4>
+                        <ul>
+                            <li><a href="#">Documentation</a></li>
+                            <li><a href="#">API Reference</a></li>
+                            <li><a href="#">Getting Started</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Support</h4>
+                        <ul>
+                            <li><a href="#">Help Center</a></li>
+                            <li><a href="#">Contact Us</a></li>
+                            <li><a href="#">Community</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Legal</h4>
+                        <ul>
+                            <li><a href="#">Privacy Policy</a></li>
+                            <li><a href="#">Terms of Service</a></li>
+                            <li><a href="#">Security</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p>&copy; 2024 FigJam Insights. Built with AWS design principles.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
