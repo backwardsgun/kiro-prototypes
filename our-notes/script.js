@@ -85,6 +85,7 @@ function renderTopBar() {
         <button class="btn btn-ghost" id="toggle-sidebar">
           ${state.sidebarOpen ? '◀' : '▶'} Notes
         </button>
+        <button class="btn btn-ghost" id="start-over-btn" title="Start over">↺ Start over</button>
       </div>
     </div>
   `;
@@ -224,6 +225,25 @@ function attachListeners() {
   if (toggleSidebar) {
     toggleSidebar.addEventListener('click', () => {
       state.sidebarOpen = !state.sidebarOpen;
+      render();
+    });
+  }
+
+  // Start over
+  const startOverBtn = document.getElementById('start-over-btn');
+  if (startOverBtn) {
+    startOverBtn.addEventListener('click', () => {
+      if (!confirm('Start over? This will clear the loaded prototype and all comments.')) return;
+      if (window._iframePoller) clearInterval(window._iframePoller);
+      state.prototypeUrl = '';
+      state.loaded = false;
+      state.commentMode = false;
+      state.comments = [];
+      state.selectedCommentId = null;
+      state.newCommentPos = null;
+      state.currentScreen = '';
+      localStorage.removeItem('our-notes-comments');
+      localStorage.removeItem('our-notes-url');
       render();
     });
   }
