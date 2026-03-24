@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><title>Generate Critiq Icons</title></head>
+<body>
+<p>Right-click each canvas and "Save image as" to create the icon files.</p>
+<canvas id="c16" width="16" height="16"></canvas>
+<canvas id="c48" width="48" height="48"></canvas>
+<canvas id="c128" width="128" height="128"></canvas>
+<script>
+[16, 48, 128].forEach(size => {
+  const c = document.getElementById('c' + size);
+  const ctx = c.getContext('2d');
+  // Orange circle
+  ctx.beginPath();
+  ctx.arc(size/2, size/2, size/2 - 1, 0, Math.PI * 2);
+  ctx.fillStyle = '#FF9900';
+  ctx.fill();
+  // "C" letter
+  ctx.fillStyle = '#000';
+  ctx.font = `bold ${size * 0.6}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('C', size/2, size/2 + 1);
+});
+</script>
+</body>
+</html>
