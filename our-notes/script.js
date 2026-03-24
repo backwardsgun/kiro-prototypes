@@ -4,6 +4,7 @@ let state = {
   prototypeUrl: '',
   loaded: false,
   commentMode: false,
+  showPins: false,
   sidebarOpen: true,
   comments: [],
   selectedCommentId: null,
@@ -162,6 +163,9 @@ function renderTopBar() {
       </div>
       <div class="top-bar-right">
         ${state.loaded ? `
+          <button class="btn btn-ghost ${state.showPins ? 'active' : ''}" id="toggle-pins">
+            💬 ${state.showPins ? 'Hide pins' : 'Display comments'}
+          </button>
           <button class="btn btn-ghost ${state.commentMode ? 'active' : ''}" id="toggle-comment-mode">
             📌 ${state.commentMode ? 'Done commenting' : 'Add comment'}
           </button>
@@ -178,13 +182,14 @@ function renderTopBar() {
 }
 
 function renderViewport() {
-  const pins = currentComments().map((c, i) => `
+  const pinsVisible = state.showPins || state.commentMode;
+  const pins = pinsVisible ? currentComments().map((c, i) => `
     <div class="pin ${state.selectedCommentId === c.id ? 'selected' : ''}"
          style="left: ${c.x}%; top: ${c.y}%;"
          data-comment-id="${c.id}">
       <span class="pin-number">${i + 1}</span>
     </div>
-  `).join('');
+  `).join('') : '';
 
   const newCommentForm = state.newCommentPos ? `
     <div class="new-comment-form" style="left: ${Math.min(state.newCommentPos.x, 70)}%; top: ${Math.min(state.newCommentPos.y + 2, 80)}%;">
@@ -276,23 +281,42 @@ function attachListeners() {
   if (urlInput) urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadPrototype(); });
   if (loadBtn) loadBtn.addEventListener('click', loadPrototype);
 
+  // Toggle pin visibility
+  const togglePins = document.getElementById('toggle-pins');
+  if (togglePins) {
+    togglePins.addEventListener('click', () => {
+      state.showPins = !state.showPins;
+      togglePins.classList.toggle('active', state.showPins);
+      togglePins.innerHTML = `💬 ${state.showPins ? 'Hide pins' : 'Display comments'}`;
+      updateOverlay();
+    });
+  }
+
   // Toggle comment mode — PARTIAL update, no iframe rebuild
   const toggleMode = document.getElementById('toggle-comment-mode');
   if (toggleMode) {
     toggleMode.addEventListener('click', () => {
       state.commentMode = !state.commentMode;
       state.newCommentPos = null;
+      // Entering comment mode also shows pins
+      if (state.commentMode) state.showPins = true;
       // Update overlay class without rebuilding iframe
       const overlay = document.getElementById('viewport-overlay');
       if (overlay) {
         overlay.classList.toggle('active', state.commentMode);
-        // Remove any new-comment form
         const form = overlay.querySelector('.new-comment-form');
         if (form) form.remove();
       }
-      // Update button appearance
+      // Update button appearances
       toggleMode.classList.toggle('active', state.commentMode);
       toggleMode.innerHTML = `📌 ${state.commentMode ? 'Done commenting' : 'Add comment'}`;
+      // Sync pins toggle button
+      const pinsBtn = document.getElementById('toggle-pins');
+      if (pinsBtn) {
+        pinsBtn.classList.toggle('active', state.showPins);
+        pinsBtn.innerHTML = `💬 ${state.showPins ? 'Hide pins' : 'Display comments'}`;
+      }
+      updateOverlay();
     });
   }
 
@@ -693,13 +717,15 @@ function updateOverlay() {
   if (!overlay) return;
   const comments = currentComments();
 
-  const pins = comments.map((c, i) => `
+  // Only show pins if showPins is true or in comment mode
+  const pinsVisible = state.showPins || state.commentMode;
+  const pins = pinsVisible ? comments.map((c, i) => `
     <div class="pin ${state.selectedCommentId === c.id ? 'selected' : ''}"
          style="left: ${c.x}%; top: ${c.y}%;"
          data-comment-id="${c.id}">
       <span class="pin-number">${i + 1}</span>
     </div>
-  `).join('');
+  `).join('') : '';
 
   const newCommentForm = state.newCommentPos ? `
     <div class="new-comment-form" style="left: ${Math.min(state.newCommentPos.x, 70)}%; top: ${Math.min(state.newCommentPos.y + 2, 80)}%;">
