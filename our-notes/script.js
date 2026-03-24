@@ -381,13 +381,21 @@ function loadPrototype() {
   render();
 }
 
-function saveNewComment() {
+async function saveNewComment() {
   const textarea = document.getElementById('new-comment-text');
   if (!textarea || !textarea.value.trim()) return;
 
   const commentText = textarea.value.trim();
   const pinX = state.newCommentPos.x;
   const pinY = state.newCommentPos.y;
+
+  // Capture screenshot BEFORE re-rendering (iframe must still be in DOM)
+  let screenshot = null;
+  try {
+    screenshot = await captureScreenshot(pinX, pinY);
+  } catch(e) {
+    console.warn('Screenshot capture failed:', e);
+  }
 
   const comment = {
     id: 'c_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
@@ -397,21 +405,8 @@ function saveNewComment() {
     text: commentText,
     author: state.userName,
     timestamp: Date.now(),
-    screenshot: null
+    screenshot: screenshot
   };
-
-  // Capture screenshot of the iframe wrapper area
-  captureScreenshot(pinX, pinY).then(dataUrl => {
-    comment.screenshot = dataUrl;
-    saveComments();
-    updateOverlay();
-    updateSidebar();
-  }).catch(() => {
-    // Screenshot failed (likely cross-origin) — save without it
-    saveComments();
-    updateOverlay();
-    updateSidebar();
-  });
 
   state.comments.push(comment);
   state.newCommentPos = null;
