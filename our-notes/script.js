@@ -957,11 +957,12 @@ function showExtensionModal() {
         <div class="ext-step"><span class="ext-step-num">1</span> Download and unzip the extension</div>
         <div class="ext-step"><span class="ext-step-num">2</span> Open <code>chrome://extensions</code> in Chrome</div>
         <div class="ext-step"><span class="ext-step-num">3</span> Enable <strong>Developer mode</strong> (top right)</div>
-        <div class="ext-step"><span class="ext-step-num">4</span> Click <strong>Load unpacked</strong> → select the folder</div>
+        <div class="ext-step"><span class="ext-step-num">4</span> Click <strong>Load unpacked</strong> → select the <code>critiq-extension</code> folder</div>
+        <div class="ext-step"><span class="ext-step-num">5</span> Restart your browser for changes to take effect</div>
       </div>
       <div class="export-actions" style="margin-top: 20px;">
         <button class="btn btn-ghost" id="ext-modal-close">Close</button>
-        <a class="btn btn-primary" href="https://github.com/backwardsgun/kiro-prototypes/archive/refs/heads/main.zip" target="_blank" style="text-decoration: none;">Download Extension</a>
+        <a class="btn btn-primary" href="https://backwardsgun.github.io/kiro-prototypes/critiq-extension.zip" target="_blank" style="text-decoration: none;">Download Extension</a>
       </div>
     </div>
   `;
