@@ -8,6 +8,7 @@ let state = {
   sidebarOpen: true,
   comments: [],
   selectedCommentId: null,
+  editingCommentId: null,
   newCommentPos: null,
   userName: 'Reviewer',
   currentScreen: ''
@@ -239,6 +240,16 @@ function renderCommentCard(c, i) {
   const thumbnail = c.screenshot
     ? `<div class="comment-thumbnail" data-screenshot="${c.id}"><img src="${c.screenshot}" alt="Screenshot"></div>`
     : '';
+  const isEditing = state.editingCommentId === c.id;
+  const textSection = isEditing
+    ? `<div class="comment-edit-form">
+        <textarea class="comment-edit-textarea" data-comment-id="${c.id}">${c.text}</textarea>
+        <div class="comment-edit-actions">
+          <button class="btn btn-ghost btn-sm cancel-edit-btn" data-comment-id="${c.id}">Cancel</button>
+          <button class="btn btn-primary btn-sm save-edit-btn" data-comment-id="${c.id}">Save</button>
+        </div>
+      </div>`
+    : `<div class="comment-text">${c.text}</div>`;
   return `
     <div class="comment-card ${state.selectedCommentId === c.id ? 'selected' : ''}" data-comment-id="${c.id}">
       <div class="comment-card-header">
@@ -248,10 +259,11 @@ function renderCommentCard(c, i) {
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
           <span class="comment-pin-number">${i + 1}</span>
+          ${!isEditing ? `<button class="btn btn-ghost btn-sm edit-comment-btn" data-comment-id="${c.id}" title="Edit">✎</button>` : ''}
           <button class="btn btn-danger delete-comment-btn" data-comment-id="${c.id}" title="Delete">✕</button>
         </div>
       </div>
-      <div class="comment-text">${c.text}</div>
+      ${textSection}
       ${thumbnail}
       <div class="comment-meta">
         <span class="comment-time">${formatTime(c.timestamp)}</span>
@@ -796,10 +808,50 @@ function updateSidebar() {
       await deleteScreenshot(id);
       state.comments = state.comments.filter(c => c.id !== id);
       if (state.selectedCommentId === id) state.selectedCommentId = null;
+      if (state.editingCommentId === id) state.editingCommentId = null;
       saveComments();
       updateOverlay();
       updateSidebar();
       updateCommentCount();
+    });
+  });
+
+  // Edit comment
+  sidebarContent.querySelectorAll('.edit-comment-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.editingCommentId = btn.dataset.commentId;
+      updateSidebar();
+      // Focus the textarea
+      setTimeout(() => {
+        const ta = sidebarContent.querySelector(`.comment-edit-textarea[data-comment-id="${btn.dataset.commentId}"]`);
+        if (ta) { ta.focus(); ta.selectionStart = ta.value.length; }
+      }, 50);
+    });
+  });
+
+  // Save edit
+  sidebarContent.querySelectorAll('.save-edit-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.commentId;
+      const ta = sidebarContent.querySelector(`.comment-edit-textarea[data-comment-id="${id}"]`);
+      if (ta && ta.value.trim()) {
+        const comment = state.comments.find(c => c.id === id);
+        if (comment) comment.text = ta.value.trim();
+        saveComments();
+      }
+      state.editingCommentId = null;
+      updateSidebar();
+    });
+  });
+
+  // Cancel edit
+  sidebarContent.querySelectorAll('.cancel-edit-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.editingCommentId = null;
+      updateSidebar();
     });
   });
 
