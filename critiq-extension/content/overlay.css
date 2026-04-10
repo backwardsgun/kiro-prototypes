@@ -144,3 +144,16 @@
   font-family: -apple-system, sans-serif;
 }
 .critiq-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Edit */
+.critiq-edit {
+  background: none; border: none; color: #8892a4; cursor: pointer; font-size: 14px;
+  padding: 2px 6px; border-radius: 4px;
+}
+.critiq-edit:hover { color: #FF9900; }
+.critiq-edit-form { margin-bottom: 8px; }
+.critiq-edit-textarea {
+  width: 100%; background: #0f1117; border: 1px solid #FF9900;
+  border-radius: 10px; color: #e2e8f0; font-size: 13px; font-family: inherit;
+  padding: 10px; resize: none; outline: none; min-height: 60px; margin-bottom: 8px;
+}

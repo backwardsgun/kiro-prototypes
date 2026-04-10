@@ -6,6 +6,8 @@
   let state = {
     active: false,
     commentMode: false,
+    showPins: false,
+    editingId: null,
     comments: [],
     currentUrl: location.href,
     newPin: null,
@@ -48,12 +50,13 @@
   // --- Render pins ---
   function renderPins() {
     const comments = currentComments();
-    pinLayer.innerHTML = comments.map((c, i) => `
+    const pinsVisible = state.showPins || state.commentMode;
+    pinLayer.innerHTML = pinsVisible ? comments.map((c, i) => `
       <div class="critiq-pin ${state.selectedId === c.id ? 'selected' : ''}"
            style="left:${c.x}px;top:${c.y}px;" data-id="${c.id}">
         <span class="critiq-pin-num">${i + 1}</span>
       </div>
-    `).join('');
+    `).join('') : '';
 
     if (state.newPin) {
       pinLayer.innerHTML += `
@@ -193,15 +196,26 @@
       : comments.map((c, i) => {
           const thumb = c.screenshot ? `<div class="critiq-thumb" data-id="${c.id}"><img src="${c.screenshot}"></div>` : '';
           const time = formatTime(c.timestamp);
+          const isEditing = state.editingId === c.id;
+          const textSection = isEditing
+            ? `<div class="critiq-edit-form">
+                <textarea class="critiq-edit-textarea" data-id="${c.id}">${c.text}</textarea>
+                <div class="critiq-form-actions">
+                  <button class="critiq-btn critiq-btn-ghost critiq-btn-sm critiq-cancel-edit" data-id="${c.id}">Cancel</button>
+                  <button class="critiq-btn critiq-btn-primary critiq-btn-sm critiq-save-edit" data-id="${c.id}">Save</button>
+                </div>
+              </div>`
+            : `<div class="critiq-card-text">${c.text}</div>`;
           return `
             <div class="critiq-card ${state.selectedId === c.id ? 'selected' : ''}" data-id="${c.id}">
               <div class="critiq-card-head">
                 <div class="critiq-avatar">${c.author.charAt(0).toUpperCase()}</div>
                 <span class="critiq-author">${c.author}</span>
                 <span class="critiq-num">${i + 1}</span>
+                ${!isEditing ? `<button class="critiq-edit" data-id="${c.id}" title="Edit">✎</button>` : ''}
                 <button class="critiq-delete" data-id="${c.id}">✕</button>
               </div>
-              <div class="critiq-card-text">${c.text}</div>
+              ${textSection}
               ${thumb}
               <div class="critiq-card-time">${time}</div>
             </div>
@@ -212,10 +226,13 @@
       <div class="critiq-panel-header">
         <span class="critiq-panel-title">Critiq</span>
         <div class="critiq-panel-actions">
+          <button class="critiq-btn critiq-btn-ghost critiq-btn-sm ${state.showPins ? 'active' : ''}" id="critiq-toggle-pins">
+            💬 ${state.showPins ? 'Hide pins' : 'Display comments'}
+          </button>
           <button class="critiq-btn critiq-btn-ghost critiq-btn-sm ${state.commentMode ? 'active' : ''}" id="critiq-toggle-mode">
             📌 ${state.commentMode ? 'Done' : 'Add comment'}
           </button>
-          ${state.comments.length > 0 ? '<button class="critiq-btn critiq-btn-ghost critiq-btn-sm" id="critiq-export">📄 Export</button>' : ''}
+          ${state.comments.length > 0 ? '<button class="critiq-btn critiq-btn-ghost critiq-btn-sm" id="critiq-export">📄 Export to PDF</button>' : ''}
         </div>
       </div>
       <div class="critiq-panel-body">${commentCards}</div>
@@ -224,9 +241,16 @@
   }
 
   function attachPanelListeners() {
+    document.getElementById('critiq-toggle-pins')?.addEventListener('click', () => {
+      state.showPins = !state.showPins;
+      renderPins();
+      renderPanel();
+    });
+
     document.getElementById('critiq-toggle-mode')?.addEventListener('click', () => {
       state.commentMode = !state.commentMode;
       state.newPin = null;
+      if (state.commentMode) state.showPins = true;
       pinLayer.classList.toggle('comment-mode', state.commentMode);
       renderPins();
       renderPanel();
@@ -236,12 +260,11 @@
 
     panel.querySelectorAll('.critiq-card').forEach(card => {
       card.addEventListener('click', (e) => {
-        if (e.target.closest('.critiq-delete')) return;
+        if (e.target.closest('.critiq-delete') || e.target.closest('.critiq-edit') || e.target.closest('.critiq-edit-form')) return;
         state.selectedId = card.dataset.id;
         state.newPin = null;
         renderPins();
         renderPanel();
-        // Scroll to pin
         const c = state.comments.find(c => c.id === card.dataset.id);
         if (c) window.scrollTo({ top: c.y - 200, behavior: 'smooth' });
       });
@@ -252,8 +275,47 @@
         e.stopPropagation();
         state.comments = state.comments.filter(c => c.id !== btn.dataset.id);
         if (state.selectedId === btn.dataset.id) state.selectedId = null;
+        if (state.editingId === btn.dataset.id) state.editingId = null;
         saveComments();
         renderPins();
+        renderPanel();
+      });
+    });
+
+    // Edit
+    panel.querySelectorAll('.critiq-edit').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.editingId = btn.dataset.id;
+        renderPanel();
+        setTimeout(() => {
+          const ta = panel.querySelector(`.critiq-edit-textarea[data-id="${btn.dataset.id}"]`);
+          if (ta) { ta.focus(); ta.selectionStart = ta.value.length; }
+        }, 50);
+      });
+    });
+
+    // Save edit
+    panel.querySelectorAll('.critiq-save-edit').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const ta = panel.querySelector(`.critiq-edit-textarea[data-id="${id}"]`);
+        if (ta && ta.value.trim()) {
+          const comment = state.comments.find(c => c.id === id);
+          if (comment) comment.text = ta.value.trim();
+          saveComments();
+        }
+        state.editingId = null;
+        renderPanel();
+      });
+    });
+
+    // Cancel edit
+    panel.querySelectorAll('.critiq-cancel-edit').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.editingId = null;
         renderPanel();
       });
     });
