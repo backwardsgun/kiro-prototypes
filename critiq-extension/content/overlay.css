@@ -157,3 +157,28 @@
   border-radius: 10px; color: #e2e8f0; font-size: 13px; font-family: inherit;
   padding: 10px; resize: none; outline: none; min-height: 60px; margin-bottom: 8px;
 }
+
+/* Collapsed panel */
+#critiq-panel.critiq-collapsed {
+  width: auto; background: transparent; border: none;
+  display: flex; align-items: flex-start; justify-content: flex-end;
+  padding-top: 12px;
+}
+
+.critiq-expand-tab {
+  background: #1a1d27; border: 1px solid rgba(255,255,255,0.08);
+  color: #e2e8f0; font-size: 12px; font-weight: 600;
+  padding: 8px 14px; border-radius: 10px 0 0 10px;
+  cursor: pointer; font-family: -apple-system, sans-serif;
+  box-shadow: -2px 2px 12px rgba(0,0,0,0.3);
+  transition: background 0.15s;
+}
+.critiq-expand-tab:hover { background: #232733; }
+
+.critiq-collapse-btn {
+  background: none; border: none; color: #8892a4; cursor: pointer;
+  font-size: 14px; padding: 4px 8px; border-radius: 6px;
+  margin-left: auto; margin-right: 8px;
+  transition: color 0.15s;
+}
+.critiq-collapse-btn:hover { color: #e2e8f0; }

@@ -7,6 +7,7 @@
     active: false,
     commentMode: false,
     showPins: false,
+    panelOpen: true,
     editingId: null,
     comments: [],
     currentUrl: location.href,
@@ -189,6 +190,16 @@
   function renderPanel() {
     if (!state.active) { panel.classList.add('critiq-hidden'); return; }
     panel.classList.remove('critiq-hidden');
+    panel.classList.toggle('critiq-collapsed', !state.panelOpen);
+
+    if (!state.panelOpen) {
+      panel.innerHTML = `<button class="critiq-expand-tab" id="critiq-expand" title="Open Critiq panel">◀ Critiq</button>`;
+      document.getElementById('critiq-expand')?.addEventListener('click', () => {
+        state.panelOpen = true;
+        renderPanel();
+      });
+      return;
+    }
 
     const comments = currentComments();
     const commentCards = comments.length === 0
@@ -225,6 +236,7 @@
     panel.innerHTML = `
       <div class="critiq-panel-header">
         <span class="critiq-panel-title">Critiq</span>
+        <button class="critiq-collapse-btn" id="critiq-collapse" title="Collapse panel">▶</button>
         <div class="critiq-panel-actions">
           <button class="critiq-btn critiq-btn-ghost critiq-btn-sm ${state.showPins ? 'active' : ''}" id="critiq-toggle-pins">
             💬 ${state.showPins ? 'Hide pins' : 'Display comments'}
@@ -241,6 +253,11 @@
   }
 
   function attachPanelListeners() {
+    document.getElementById('critiq-collapse')?.addEventListener('click', () => {
+      state.panelOpen = false;
+      renderPanel();
+    });
+
     document.getElementById('critiq-toggle-pins')?.addEventListener('click', () => {
       state.showPins = !state.showPins;
       renderPins();
